@@ -71,7 +71,7 @@ def listtomidi(songl, tempo):
     track.append(
         MetaMessage('smpte_offset', frame_rate=24, hours=32, minutes=0, seconds=0, frames=0, sub_frames=0, time=0))
     track.append(Message('program_change', program=1, time=0))
-    bpm = tempo / (250000 / 120)
+    bpm = (tempo*3) / (250000 / 120)
     birtam = 60 * (32 * 1)
     notalar = [
         60 * 32 * 1 * 120 / bpm,
@@ -135,7 +135,8 @@ def partGen(part="Intro", play=False, plot=False, speed=1, volume=1, tempo=120):
         Play.play(filename, speed, volume)
 
 
-def songGen(play=False, plot=False, speed=1, volume=1):
+
+def songGen(play=False, plot=False, speed=1, volume=1,tempo=120):
     start = datetime.datetime.now()
     i = usePattern() * 2
     # print("Generated Intro")
@@ -159,7 +160,7 @@ def songGen(play=False, plot=False, speed=1, volume=1):
     for structure in song_structure:
         songl.append(structure)
     filename = namethefile("Song")
-    mid = listtomidi(songl)
+    mid = listtomidi(songl, round((250000 / 120) * tempo))
     mid.save(filename)
     gen = datetime.datetime.now() - start
     print("Generated", filename.replace("Generated/", ""), "in", str(gen))
@@ -173,19 +174,21 @@ def songGen(play=False, plot=False, speed=1, volume=1):
         Play.play(filename, speed, volume)
 
 
+
 def readmidi(filename):
     mid = MidiFile(filename, clip=True)
 
     start = datetime.datetime.now()
+    Play.play(filename, 1, 1)
+    for message in mid.tracks[0]:
+        print(message)
     try:
         Plot.showplotofmidi(filename, "GeneratedPlots/" + filename.replace("mid", "png").split("/")[-1])
         plot = datetime.datetime.now() - start
         print("Ploted", filename, "in", str(plot))
     except:
         print("Plotting failed.")
-    Play.play(filename, 1, 1)
-    for message in mid.tracks[0]:
-        print(message)
 
 
-partGen(play=True, plot=True, tempo=480)
+#readmidi("Generated/Intro-22-3-2021-0.mid")
+songGen(play=True, plot=True, tempo=120)
