@@ -59,10 +59,13 @@ def namethefile(filetype):
     return "Generated/" + filetype.capitalize() + timestamp + "-" + str(recordid) + ".mid"
 
 
-def listtomidi(songl, tempo):
+def listtomidi(songl, tempo,filename):
     mid = MidiFile()
     track = MidiTrack()
     mid.tracks.append(track)
+    filename=filename.replace("Generated/","")
+    track.append(MetaMessage("marker" ,text=filename))
+    track.append(MetaMessage("track_name",name="Piano"))
     track.append(MetaMessage('set_tempo', tempo=tempo, time=0))
     track.append(
         MetaMessage("time_signature", numerator=4, denominator=4, clocks_per_click=24, notated_32nd_notes_per_beat=8,
@@ -118,7 +121,7 @@ def partGen(part="Intro", play=False, plot=False, speed=1, volume=1, tempo=120):
     start = datetime.datetime.now()
     i = [usePattern() * 1]
     filename = namethefile(part)
-    mid = listtomidi(i, round((250000 / 120) * tempo))
+    mid = listtomidi(i, round((250000 / 120) * tempo),filename)
     mid.save(filename)
     gen = datetime.datetime.now() - start
     print("Generated", filename.replace("Generated/", ""), "in", str(gen))
@@ -160,7 +163,7 @@ def songGen(play=False, plot=False, speed=1, volume=1,tempo=120):
     for structure in song_structure:
         songl.append(structure)
     filename = namethefile("Song")
-    mid = listtomidi(songl, round((250000 / 120) * tempo))
+    mid = listtomidi(songl, round((250000 / 120) * tempo),filename)
     mid.save(filename)
     gen = datetime.datetime.now() - start
     print("Generated", filename.replace("Generated/", ""), "in", str(gen))

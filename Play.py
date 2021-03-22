@@ -10,7 +10,6 @@ def play(midi_file, speed, volume):
     fs.start(driver='portaudio')
     sfid = fs.sfload(sfz)
     fs.program_select(0, sfid, 0, 0)
-
     mid = MidiFile(midi_file, clip=True)
     for message in mid.tracks[0]:
         message = str(message).split(" ")

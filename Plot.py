@@ -6,97 +6,109 @@ import mido
 import numpy as np
 
 
-def msg2dict(msg):
-    result = dict()
-    if 'note_on' in msg:
-        on_ = True
-    elif 'note_off' in msg:
-        on_ = False
-    else:
-        on_ = None
-    result['time'] = int(msg[msg.rfind('time'):].split(' ')[0].split('=')[1].translate(
-        str.maketrans({a: None for a in string.punctuation})))
+def trackcombine(mid):
+    alltracks=[]
 
-    if on_ is not None:
-        for k in ['note', 'velocity']:
-            result[k] = int(msg[msg.rfind(k):].split(' ')[0].split('=')[1].translate(
-                str.maketrans({a: None for a in string.punctuation})))
-    return [result, on_]
+    songname="No name"
+    for track in mid.tracks:
+        trackmessages=[]
+        trackname = "Untitled Track"
+        notes=False
+        for message in track:
+            if "track_name name" in str(message):
+                trackname=str(message).split("'")
+                trackname=trackname[1]
+            if "note_on" in str(message):
+                notes=True
+            if "message marker text" in str(message):
+                songname = str(message).split("'")
+                songname = songname[1]
+            trackmessages.append(str(message))
+        if notes:
+            notes="insturment track"
+        else:
+            notes="metadata track"
+        alltracks.append([trackname,notes,trackmessages])
+    return alltracks,songname.replace("  "," ").replace("  "," ")
+def playingmatrix(playingnotes):
+    empty=[0]*127
+    for note in playingnotes:
+        empty[note]=note
+    return empty
+def tracktoarray(track):
+    messages=track[2]
+    notesplaying={}
+    array=[]
+    totaltime=0
+    for message in messages:
+        if "note_" in message:
+            message=message.split(" ")
+            status=message[0]
+            channel = int(message[1].replace("channel=", ""))
+            note = (int(message[2].replace("note=", "")))
+            velocity = int(message[3].replace("velocity=", ""))
+            time = int(message[4].replace("time=", ""))
+            totaltime+=time
+            if status=="note_off":
+                velocity=0
+            if velocity!=0:
+                notesplaying[note]={"time":time}
+            if velocity==0:
+                notesonline=[]
+                for notec in notesplaying:
+                    notesonline.append(notec)
+                notesonline.sort()
+                array.extend(playingmatrix(notesonline) * time)
+                try:
+                    del notesplaying[note]
+                except:
+                    pass
+    return array
 
+def removenegative(array):
+    return list(filter((0).__ne__, array))
 
-def showplotofmidi(midi_file, filename):
-    mid = mido.MidiFile(midi_file, clip=True)
-    result_array = mid2arry(mid)
-
+def showplot(array,filename):
     times = []
     seconds = 0
-    for _ in range(len(result_array)):
-        if _ % 1000 == 0:
-            times.append(_ / 1000)
-            seconds += 1
-    plt.plot(range(result_array.shape[0]), np.multiply(np.where(result_array > 0, 1, 0), range(1, 89)), marker='.',
-             markersize=1, linestyle='', )
-
-    notes = []
-    for number in range(88):
-        try:
-            if number % 12 == 0:
-                notes.append(librosa.midi_to_note(number))
+    if len(array)==1:
+        fig, axs = plt.subplots(len(array))
+    else:
+        fig, axs = plt.subplots(len(array),figsize=(3*len(array),4*len(array)))
+    for _ in range(len(array)):
+            arr=array[_]
+            trar=tracktoarray(arr)
+            ar=removenegative(trar)
+            ticks=0
+            if len(array) == 1:
+                axs.set_title(filename.replace("GeneratedPlots/","").replace(".mid","").replace(".png","")+" - "+arr[0])
+                axs.plot(range(len(ar)),ar, marker='.', markersize=1, linestyle='')
+                axs.tick_params(axis='x',which='both', bottom=False, top=False, labelbottom=False)
+                axs.set_ylabel('Note')
             else:
-                notes.append("")
-        except:
-            pass
-    plt.yticks(np.arange(len(notes)), notes)
-    plt.xticks(rotation=90, fontsize=7)
-    while seconds > 250:
-        seconds = seconds / 2
-    plt.locator_params(axis='x', nbins=round(seconds / 5))
-    plt.title(midi_file)
-    plt.ylabel('Note')
-    plt.savefig(filename.replace("Generated/", ""))
+                axs[_].set_title(filename.replace("GeneratedPlots/", "").replace(".mid", "").replace(".png","")+ " - " + arr[0])
+                axs[_].plot(range(len(ar)),ar, marker='.', markersize=1, linestyle='')
+                #plt.xticks(rotation=90)
+                axs[_].tick_params(axis='x',which='both', bottom=False, top=False, labelbottom=False)
+                axs[_].set_ylabel('Note')
+    if "GeneratedPlots/" not in filename:
+            filename="GeneratedPlots/"+filename.replace(" .mid","")+".png"
+    filename=filename.replace(" .png",".png")
+    if "Generated/" in filename:
+        filename=filename.replace("Generated/","")
+    plt.savefig(filename)
+    plt.tight_layout()
     plt.show()
-    return result_array
-
-
-def get_new_state(new_msg, last_state):
-    new_msg, on_ = msg2dict(str(new_msg))
-    new_state = switch_note(last_state, note=new_msg['note'], velocity=new_msg['velocity'],
-                            on_=on_) if on_ is not None else last_state
-    return [new_state, new_msg['time']]
-
-
-def switch_note(last_state, note, velocity, on_=True):
-    result = [0] * 88 if last_state is None else last_state.copy()
-    if 21 <= note <= 108:
-        result[note - 21] = velocity if on_ else 0
-    return result
-
-
-def track2seq(track):
-    result = []
-    last_state, last_time = get_new_state(str(track[0]), [0] * 88)
-    for i in range(1, len(track)):
-        new_state, new_time = get_new_state(track[i], last_state)
-        if new_time > 0:
-            result += [last_state] * new_time
-        last_state, last_time = new_state, new_time
-    return result
-
-
-def mid2arry(mid, min_msg_pct=0.1):
-    tracks_len = [len(tr) for tr in mid.tracks]
-    min_n_msg = max(tracks_len) * min_msg_pct
-    all_arys = []
-    for i in range(len(mid.tracks)):
-        if len(mid.tracks[i]) > min_n_msg:
-            ary_i = track2seq(mid.tracks[i])
-            all_arys.append(ary_i)
-    max_len = max([len(ary) for ary in all_arys])
-    for i in range(len(all_arys)):
-        if len(all_arys[i]) < max_len:
-            all_arys[i] += [[0] * 88] * (max_len - len(all_arys[i]))
-    all_arys = np.array(all_arys)
-    all_arys = all_arys.max(axis=0)
-    sums = all_arys.sum(axis=1)
-    ends = np.where(sums > 0)[0]
-    return all_arys[min(ends): max(ends)]
+    return array
+def showplotofmidi(midi_file, filename):
+    mid = mido.MidiFile(midi_file, clip=True)
+    alltracks,songname=trackcombine(mid)
+    instracks=[]
+    for track in alltracks:
+       if len(track)>2:
+           if track[1]=="insturment track":
+               instracks.append(track)
+    if songname=="No name":
+        showplot(instracks,filename)
+    else:
+        showplot(instracks, songname)
