@@ -189,4 +189,4 @@ def readmidi(filename,play=False,plot=False):
             print("Plotting failed.")
 
 
-readmidi("Queen - Bohemian Rhapsody.mid",plot=True)
+readmidi("tracks/track (1).mid",plot=True)
