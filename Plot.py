@@ -13,11 +13,15 @@ def trackcombine(mid):
     for track in mid.tracks:
         trackmessages=[]
         trackname = "Untitled Track"
+        insturment="Untitled"
         notes=False
         for message in track:
             if "track_name name" in str(message):
                 trackname=str(message).split("'")
                 trackname=trackname[1]
+            if "message text text" in str(message):
+                trackname=str(message).split("'")
+                insturment=trackname[1]
             if "note_on" in str(message):
                 notes=True
             if "message marker text" in str(message):
@@ -28,6 +32,9 @@ def trackcombine(mid):
             notes="insturment track"
         else:
             notes="metadata track"
+        if "Untitled" not in trackname:
+            if "Untitled" not in insturment:
+                trackname=insturment
         alltracks.append([trackname,notes,trackmessages])
     return alltracks,songname.replace("  "," ").replace("  "," ")
 def playingmatrix(playingnotes):
@@ -68,7 +75,7 @@ def tracktoarray(track):
 def removenegative(array):
     return list(filter((0).__ne__, array))
 
-def showplot(array,filename):
+def showplot(array,filename,timeinseconds):
     times = []
     seconds = 0
     if len(array)==1:
@@ -81,12 +88,16 @@ def showplot(array,filename):
             ar=removenegative(trar)
             ticks=0
             if len(array) == 1:
-                axs.set_title(filename.replace("GeneratedPlots/","").replace(".mid","").replace(".png","")+" - "+arr[0])
+                axs.set_title(filename.replace("GeneratedPlots/","").replace(".mid","").replace(".png","")+" - "+arr[0]+"\n"+"Duration: "+str(timeinseconds)+" seconds")
                 axs.plot(range(len(ar)),ar, marker='.', markersize=1, linestyle='')
                 axs.tick_params(axis='x',which='both', bottom=False, top=False, labelbottom=False)
                 axs.set_ylabel('Note')
             else:
-                axs[_].set_title(filename.replace("GeneratedPlots/", "").replace(".mid", "").replace(".png","")+ " - " + arr[0])
+                if _==0:
+                    axs[_].set_title("Duration: "+str(timeinseconds)+" seconds"+"\n"+filename.replace("GeneratedPlots/", "").replace(".mid", "").replace(".png","")+ " - " + arr[0])
+                else:
+                    axs[_].set_title(filename.replace("GeneratedPlots/", "").replace(".mid", "").replace(".png","")+ " - " + arr[0])
+
                 axs[_].plot(range(len(ar)),ar, marker='.', markersize=1, linestyle='')
                 #plt.xticks(rotation=90)
                 axs[_].tick_params(axis='x',which='both', bottom=False, top=False, labelbottom=False)
@@ -109,6 +120,6 @@ def showplotofmidi(midi_file, filename):
            if track[1]=="insturment track":
                instracks.append(track)
     if songname=="No name":
-        showplot(instracks,filename)
+        showplot(instracks,filename,round(mid.length))
     else:
-        showplot(instracks, songname)
+        showplot(instracks, songname,round(mid.length))
