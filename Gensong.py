@@ -93,11 +93,18 @@ def listtomidi(songl, tempo, filename,insturment):
     for part in songl:
         for notes in part:
             notelist = GenerateModel.notelisttransform(notes)[0]
-            duration=int(round(100000*notelist[1]/bpm))
+            duration=int(round(100000*notelist[1]/bpm))*3
             if duration==0:
-                duration = int(round(100000 * 0.5 / bpm))
+                duration = int(round(100000 * 0.5 / bpm))*3
+            pause=(100000/bpm)-duration
+            if pause<0:
+                pause=0
             for note in notelist[0]:
-                track.append(Message('note_on', note=librosa.note_to_midi(note.replace(".","")), velocity=127, time=int(duration)))
+                if notelist[0].index(note)==0:
+                    time=int(pause)
+                else:
+                    time=0
+                track.append(Message('note_on', note=librosa.note_to_midi(note.replace(".","")), velocity=127, time=time))
                 if lastnote != -1:
                     track.append(Message('note_off', note=librosa.note_to_midi(lastnote), velocity=0, time=int(duration)))
                 lastnote = note.replace(".","")
@@ -126,7 +133,7 @@ def partGen(genre,insturment,part="Intro", play=False, plot=False, speed=1, volu
     model=loadmodel(genre,insturment,trackfolder=trackfolder,modelpath=modelpath)
     i = [usePattern(model=model,genre=genre,insturment=insturment) * 1]
     filename = namethefile(insturment.capitalize()+"-"+genre.capitalize())
-    mid = listtomidi(i, round((250000 / 120) * tempo), filename,insturment=insturment)
+    mid = listtomidi(i, round((250000 / 120) * tempo*2), filename,insturment=insturment)
     mid.save(filename)
     gen = datetime.datetime.now() - start
     print("Generated", filename.replace("Generated/", ""), "in", str(gen))
@@ -221,4 +228,5 @@ def readmidi(filename,play=False,plot=False,printtracks=False):
             print("Ploted", filename, "in", str(plot))
 
 
-partGen("Rock","Acoustic Guitar (steel)")
+#partGen("Classical","Acoustic Grand Piano")
+partGen("Rap","Electric Guitar (jazz)")
