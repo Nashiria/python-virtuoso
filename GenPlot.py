@@ -25,6 +25,7 @@ def findinsturment(program):
                 20:'Reed Organ',
                 21:'Accordion',
                 22:'Harmonica',
+                23: 'Acoustic Guitar (nylon)',
                 24:'Acoustic Guitar (nylon)',
                 25:'Acoustic Guitar (steel)',
                 26:'Electric Guitar (jazz)',
@@ -131,42 +132,37 @@ def findinsturment(program):
                 127:'Gunshot',
                 128:'Unknown'}
     return Insturments[program]
-
 def trackcombine(mid):
     alltracks = []
     songname = "No name"
     for track in mid.tracks:
         trackmessages = []
-        trackname = "Untitled Track"
-        insturment = []
-        notes = False
+        channeldict={}
         for message in track:
-            if "track_name name" in str(message):
-                trackname = str(message).split("'")
-                trackname = trackname[1]
-            if "note_on" in str(message):
-                notes = True
-            if "message marker text" in str(message):
-                songname = str(message).split("'")
-                songname = songname[1]
-            if "program_change" in str(message):
-                ls = str(message).split(" ")
-                insturment.append(int(ls[2].replace("program=", "")))
-            trackmessages.append(str(message))
-        if notes:
-            notes = "insturment track"
-            if "drum" in trackname.lower():
-                trackname = "Drums"
-            else:
-                if len(insturment)<1:
-                    insturment.append(128)
-                insturment = findinsturment(max(set(insturment), key=insturment.count))
-                trackname = insturment
-        else:
-            notes = "metadata track"
-        alltracks.append([trackname, notes, trackmessages])
+            message = str(message).split(" ")
+            status = message[0]
+            if message[0]=="<meta" or message[0]=="sysex":
+                continue
+            channel = int(message[1].replace("channel=", ""))
+            if channel not in channeldict:
+                channeldict[channel]={"all":[]}
+            if status == "note_off":
+                status="note_on"
+                message[3]="velocity=0"
+            if status not in channeldict[channel]:
+                channeldict[channel][status]=[]
+            channeldict[channel]["all"].append(message)
+            channeldict[channel][status].append(message)
+        for channel in channeldict:
+            if "program_change" in channeldict[channel] and "note_on" in channeldict[channel]:
+                channelprogram=int(channeldict[channel]["program_change"][0][2].replace("program=",""))
+                trackname=findinsturment(channelprogram)
+                notes=channeldict[channel]["note_on"]
+                tracktype="meta"
+                if len(notes)>0:
+                    tracktype="insturment track"
+                alltracks.append([trackname, tracktype, notes])
     return alltracks, songname.replace("  ", " ").replace("  ", " ")
-
 
 def playingmatrix(playingnotes):
     empty = [0] * 127
@@ -180,7 +176,9 @@ def tracktoarray(track):
     notesplaying = {}
     array = []
     totaltime = 0
+
     for message in messages:
+        message=" ".join(message)
         if "note_" in message:
             message = message.split(" ")
             status = message[0]

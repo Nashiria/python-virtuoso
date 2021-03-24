@@ -183,7 +183,7 @@ def modelgenerate(genre,insturment ,trackfolder="tracks",modelpath="models"):
 def randomnote(model):
     return random.choice(model.wv.index2entity)
 def similarnote(model, note, count):
-    v = model.wv.similar_by_word(note, topn=count)
+    v = model.wv.similar_by_word(note, topn=count+100)
     v = random.choice(v)
     v = v[0]
     return v
@@ -232,30 +232,37 @@ def dsremove(list):
 
 def trackstojson(trackfolder="tracks"):
     genres=dsremove(os.listdir(trackfolder))
+    genres.sort()
     database={}
+    id=0
     for genre in genres:
         database[genre]={}
         songs=dsremove(os.listdir(trackfolder+"/"+genre))
+        songs.sort()
         for song in songs:
-            start=datetime.datetime.now()
-            database[genre][song]={
-                "path":trackfolder+"/"+genre+"/"+song,
-                "midi":GenPlot.trackcombine(mido.MidiFile(trackfolder+"/"+genre+"/"+song, clip=True))
-                }
-            ins=[]
-            i=0
-            tracks, songname=database[genre][song]["midi"]
-            for track in tracks:
-                if track[1]=="insturment track":
-                    ins.append([track[0],i])
-                i+=1
-            database[genre][song]["insturments"]={}
-            for insturment in ins:
-                #database[genre][song]["insturments"][insturment[0]]=miditosentences(database[genre][song]["path"])
-                database[genre][song]["insturments"][insturment[0]] = {"index":insturment[1],"notes":tracktosentences(database[genre][song]["path"],insturment[1])}
-                database[genre][song]["insturments"][insturment[0]]["pattern"]=trackPattern(database[genre][song]["insturments"][insturment[0]]["notes"])
-            del database[genre][song]["midi"]
-            print(song,str(datetime.datetime.now()-start))
+            try:
+                start=datetime.datetime.now()
+                database[genre][song]={
+                    "path":trackfolder+"/"+genre+"/"+song,
+                    "midi":GenPlot.trackcombine(mido.MidiFile(trackfolder+"/"+genre+"/"+song, clip=True))
+                    }
+                ins=[]
+                i=0
+                tracks, songname=database[genre][song]["midi"]
+                for track in tracks:
+                    if track[1]=="insturment track":
+                        ins.append([track[0],i])
+                    i+=1
+                database[genre][song]["insturments"]={}
+                for insturment in ins:
+                    #database[genre][song]["insturments"][insturment[0]]=miditosentences(database[genre][song]["path"])
+                    database[genre][song]["insturments"][insturment[0]] = {"index":insturment[1],"notes":tracktosentences(database[genre][song]["path"],insturment[1])}
+                    database[genre][song]["insturments"][insturment[0]]["pattern"]=trackPattern(database[genre][song]["insturments"][insturment[0]]["notes"])
+                del database[genre][song]["midi"]
+                print(id,genre,song,str(datetime.datetime.now()-start))
+            except:
+                pass
+            id += 1
     import json
     with open('data.txt', 'w') as outfile:
         json.dump(database, outfile,sort_keys=True)
@@ -323,6 +330,17 @@ def tracktosentences(file,index):
         else:
             notez.append([playing,0])
     return listtosentences(notez,midi.ticks_per_beat)
+
+def generatemodels():
+    import Gensong
+    genres=os.listdir("tracks")
+    ins=[GenPlot.findinsturment(x) for x in range(128)]
+    for genre in genres:
+        for insturment in ins:
+            try:
+                Gensong.partGen(genre, insturment)
+            except:
+                pass
 def testsong(file):
     genre="test"
     song=file
@@ -352,4 +370,4 @@ def testsong(file):
     del database[genre][song]["midi"]
     dict=database[genre][song]["insturments"]
     for insturment in dict:
-        print(insturment,dict[insturment]["pattern"])
+        print(insturment,dict[insturment]["notes"])

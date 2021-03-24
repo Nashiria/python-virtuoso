@@ -219,4 +219,6 @@ def readmidi(filename,play=False,plot=False,printtracks=False):
             GenPlot.showplotofmidi(filename, "GeneratedPlots/" + filename.replace("mid", "png").split("/")[-1])
             plot = datetime.datetime.now() - start
             print("Ploted", filename, "in", str(plot))
-partGen("Dubstep","Acoustic Guitar (nylon)")
+
+
+partGen("Rock","Acoustic Guitar (steel)")
