@@ -10,6 +10,7 @@ import GenerateModel
 import Play
 def loadmodel(genre,insturment,trackfolder,modelpath):
     return GenerateModel.modelgenerate(genre,insturment ,trackfolder=trackfolder,modelpath=modelpath)
+
 def loadpatterns(genre,insturment):
     with open('data.txt') as json_file:
         database = json.load(json_file)
@@ -20,7 +21,10 @@ def loadpatterns(genre,insturment):
             patterns.append(database[song]["insturments"][insturment]["pattern"])
     while [] in patterns:
         patterns.remove([])
-    return patterns[0]
+    try:
+        return patterns[0]
+    except:
+        print("There is not enough samples for this insturment")
 def usePattern(model,genre,insturment):
     patterns=loadpatterns(genre,insturment)
     if len(patterns)==0:
@@ -226,7 +230,35 @@ def readmidi(filename,play=False,plot=False,printtracks=False):
             GenPlot.showplotofmidi(filename, "GeneratedPlots/" + filename.replace("mid", "png").split("/")[-1])
             plot = datetime.datetime.now() - start
             print("Ploted", filename, "in", str(plot))
-
-
-#partGen("Classical","Acoustic Grand Piano")
-partGen("Rap","Electric Guitar (jazz)")
+def get_files_by_file_size(directoryname, reverse=False):
+    filepaths = []
+    for basename in os.listdir(directoryname):
+        filename = os.path.join(directoryname, basename)
+        if os.path.isfile(filename):
+            filepaths.append(filename)
+    for i in range(len(filepaths)):
+        filepaths[i] = (filepaths[i], os.path.getsize(filepaths[i]))
+    filepaths.sort(key=lambda filename: filename[1], reverse=reverse)
+    for i in range(len(filepaths)):
+        filepaths[i] = filepaths[i][0]
+    return filepaths
+def selectfromlist():
+    list=get_files_by_file_size("models/",reverse=True)
+    if "models/.DS_Store" in list:
+        list.remove("models/.DS_Store")
+    genres={}
+    for model in list:
+        model=model.replace(".model","").replace("models/","").split("-")
+        if model[0] not in genres:
+            genres[model[0]]=[]
+        genres[model[0]].append(model[1])
+    for genre in genres:
+        print(genre)
+    print("")
+    genre=input("Genre:")
+    for ins in genres[genre]:
+        print(ins)
+    print("")
+    insturment=input("Insturment:")
+    partGen(genre, insturment)
+selectfromlist()
